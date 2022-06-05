@@ -370,6 +370,9 @@ int main(s32 argCount, char *arguments[])
 	cmdArgs.outlinewidth = {"-outlinewidth", "Cell shading outline width in hammer units. It's 2.0 by default.", CMDARG_FLOAT};
 	cmdArgs.outlinewidth.floatValue = 2;
 	
+	
+	printf("Running VMF Cell Shading V%s\n\n", VMFCS_VERSION);
+	
 	if (!ParseCmdArgs(&cmdArgs, argCount, arguments))
 	{
 		printf("Command line parsing failed!\n\n");
