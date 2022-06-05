@@ -364,6 +364,7 @@ int main(s32 argCount, char *arguments[])
 {
 	CmdArgs cmdArgs = {};
 	cmdArgs.help = {"-help", "Help!!!", CMDARG_NONE};
+	cmdArgs.printCmdLine = {"-printcmdline", "Print the command line for debugging.", CMDARG_NONE};
 	cmdArgs.debugExportObj = {"-debugexportobj", "Export an obj file of brush faces for debugging.", CMDARG_STRING};
 	cmdArgs.input = {"-input", "Input vmf file to be used for generating cell shading.", CMDARG_STRING};
 	cmdArgs.output = {"-output", "Output instance vmf file of cell shading brushes.", CMDARG_STRING};
@@ -381,7 +382,10 @@ int main(s32 argCount, char *arguments[])
 		goto cleanup;
 	}
 	
-	PrintCmdLine(argCount, arguments);
+	if (cmdArgs.printCmdLine.isInCmdLine)
+	{
+		PrintCmdLine(argCount, arguments);
+	}
 	
 	if (!cmdArgs.input.isInCmdLine)
 	{

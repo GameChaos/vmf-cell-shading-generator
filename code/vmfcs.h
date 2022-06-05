@@ -47,12 +47,13 @@ union CmdArgs
 	struct
 	{
 		CmdArg help;
+		CmdArg printCmdLine;
 		CmdArg debugExportObj;
 		CmdArg input;
 		CmdArg output;
 		CmdArg outlinewidth;
 	};
-	CmdArg args[5];
+	CmdArg args[6];
 };
 
 static_assert(ARRAY_LENGTH(MEMBER(CmdArgs, args)) * sizeof(CmdArg) == sizeof(CmdArgs), "CmdArgs union args are mismatched!");
