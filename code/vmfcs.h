@@ -20,6 +20,7 @@ enum CmdArgType
 {
 	CMDARG_NONE,
 	CMDARG_STRING,
+	CMDARG_FLOAT,
 	
 	CMDARGTYPE_COUNT,
 };
@@ -30,7 +31,11 @@ struct CmdArg
 	char description[128];
 	
 	CmdArgType type;
-	char stringValue[512];
+	union
+	{
+		char stringValue[512];
+		f32 floatValue;
+	};
 	
 	b32 isInCmdLine; // whether this exists on the command line
 };
@@ -43,8 +48,9 @@ union CmdArgs
 		CmdArg debugExportObj;
 		CmdArg input;
 		CmdArg output;
+		CmdArg outlinewidth;
 	};
-	CmdArg args[4];
+	CmdArg args[5];
 };
 
 static_assert(ARRAY_LENGTH(MEMBER(CmdArgs, args)) * sizeof(CmdArg) == sizeof(CmdArgs), "CmdArgs union args are mismatched!");
@@ -55,7 +61,7 @@ internal void CopyString(char *source, size_t copyCount, char *dest, size_t dest
 internal b32 StringEquals(char *str1, char *str2);
 internal b32 StringToU32(char *str, u32 *out);
 internal b32 StringToS32(char *str, s32 *out);
-internal f32 StringToF32(char *str);
+internal b32 StringToF32(char *str, f32 *out);
 internal ReadFileResult ReadEntireFile(char *filePath);
 internal s32 ScanStringFormat(char *string, char *format, ...);
 internal s32 Format(char *buffer, size_t maxlen, char *format, ...);
@@ -63,6 +69,7 @@ internal s32 Format(char *buffer, size_t maxlen, char *format, ...);
 global char *g_cmdArgTypeStrings[CMDARGTYPE_COUNT] = {
 	"None",
 	"String",
+	"Number",
 };
 
 local_persist char *emptyVmf = R"(

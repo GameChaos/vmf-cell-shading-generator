@@ -191,9 +191,20 @@ internal b32 StringToS32(char *str, s32 *out)
 	return result;
 }
 
-internal f32 StringToF32(char *str)
+internal b32 StringToF32(char *str, f32 *out)
 {
-	return strtof(str, 0);
+	b32 result = false;
+	
+	s64 len = strlen(str);
+	char *strEnd = str + len + 1;
+	f32 number = strtof(str, &strEnd);
+	
+	result = strEnd != str;
+	if (result)
+	{
+		*out = number;
+	}
+	return result;
 }
 
 internal s32 ScanStringFormat(char *string, char *format, ...)
@@ -219,10 +230,6 @@ internal b32 ParseCmdArgs(CmdArgs *cmdArgs, s32 argCount, char *arguments[])
 	b32 result = true;
 	for (s32 i = 1; i < argCount; i++)
 	{
-		if (!result)
-		{
-			break;
-		}
 		b32 found = false;
 		for (s32 j = 0; j < ARRAY_LENGTH(cmdArgs->args); j++)
 		{
@@ -242,23 +249,40 @@ internal b32 ParseCmdArgs(CmdArgs *cmdArgs, s32 argCount, char *arguments[])
 				}
 				
 				cmdArgs->args[j].isInCmdLine = true;
-				if (cmdArgs->args[j].type == CMDARG_STRING)
+				if (cmdArgs->args[j].type != CMDARG_NONE)
 				{
 					if (i + 1 < argCount)
 					{
 						if (arguments[i + 1][0] != '-')
 						{
-							s64 argLen = strlen(arguments[i + 1]);
-							if (argLen >= sizeof(cmdArgs->args[j].stringValue))
+							if (cmdArgs->args[j].type == CMDARG_STRING)
 							{
-								printf("ERROR: String is too long for argument %s! Maximum length is %lli characters.\n\n",
-									   arguments[i], (s64)sizeof(MEMBER(CmdArg, stringValue)) - 1);
-								result = false;
-								break;
+								s64 argLen = strlen(arguments[i + 1]);
+								if (argLen >= sizeof(cmdArgs->args[j].stringValue))
+								{
+									printf("ERROR: String is too long for argument %s! Maximum length is %lli characters.\n\n",
+										   arguments[i], (s64)sizeof(MEMBER(CmdArg, stringValue)) - 1);
+									result = false;
+									break;
+								}
+								
+								memcpy(cmdArgs->args[j].stringValue, arguments[i + 1], argLen);
+								cmdArgs->args[j].stringValue[argLen] = '\0';
 							}
-							
-							memcpy(cmdArgs->args[j].stringValue, arguments[i + 1], argLen);
-							cmdArgs->args[j].stringValue[argLen] = '\0';
+							else if (cmdArgs->args[j].type == CMDARG_FLOAT)
+							{
+								if (!StringToF32(arguments[i + 1], &cmdArgs->args[j].floatValue))
+								{
+									printf("ERROR: Couldn't convert command \"%s\"'s argument \"%s\" to a number!\n\n",
+										   arguments[i], arguments[i + 1]);
+									result = false;
+									break;
+								}
+							}
+							else
+							{
+								printf("ERROR: Dumbass programmer configured the command line options incorrectly. Shame on them!\n\n");
+							}
 							
 							i++;
 						}
@@ -291,6 +315,11 @@ internal b32 ParseCmdArgs(CmdArgs *cmdArgs, s32 argCount, char *arguments[])
 		{
 			printf("Invalid command \"%s\"\n\n", arguments[i]);
 			result = false;
+			break;
+		}
+		
+		if (!result)
+		{
 			break;
 		}
 	}
@@ -338,6 +367,8 @@ int main(s32 argCount, char *arguments[])
 	cmdArgs.debugExportObj = {"-debugexportobj", "Export an obj file of brush faces for debugging.", CMDARG_STRING};
 	cmdArgs.input = {"-input", "Input vmf file to be used for generating cell shading.", CMDARG_STRING};
 	cmdArgs.output = {"-output", "Output instance vmf file of cell shading brushes.", CMDARG_STRING};
+	cmdArgs.outlinewidth = {"-outlinewidth", "Cell shading outline width in hammer units. It's 2.0 by default.", CMDARG_FLOAT};
+	cmdArgs.outlinewidth.floatValue = 2;
 	
 	if (!ParseCmdArgs(&cmdArgs, argCount, arguments))
 	{
@@ -376,7 +407,7 @@ int main(s32 argCount, char *arguments[])
 		goto cleanup;
 	}
 	
-	printf("Generating cell shading for \"%s\".\n\n", cmdArgs.input.stringValue);
+	printf("Generating cell shading for \"%s\" with outline width %.1f.\n\n", cmdArgs.input.stringValue, cmdArgs.outlinewidth.floatValue);
 	
 	s32 cellshadeVisgroupId = -1;
 	s32 maxVisgroupId = -1;
@@ -500,7 +531,7 @@ int main(s32 argCount, char *arguments[])
 					// NOTE(GameChaos): inflate brush by x units
 					if (!StringEquals(brush.sides[side].material, "TOOLS/TOOLSNODRAW"))
 					{
-						brushSide.distance += 2.0;
+						brushSide.distance += cmdArgs.outlinewidth.floatValue;
 					}
 					arrput(baseBrush.sides, brushSide);
 				}

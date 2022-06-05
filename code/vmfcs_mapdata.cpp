@@ -169,7 +169,7 @@ internal b32 ParseVMFSolidSide(KeyValues *kv, BrushSide *outSide)
 		}
 		else if (StringEquals(key, "rotation"))
 		{
-			outSide->rotation = StringToF32(value);
+			StringToF32(value, &outSide->rotation);
 		}
 		else if (StringEquals(key, "lightmapscale"))
 		{
