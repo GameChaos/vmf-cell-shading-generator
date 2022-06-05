@@ -206,44 +206,98 @@ internal s32 Format(char *buffer, size_t maxlen, char *format, ...)
 	return result;
 }
 
-
 int main()
 {
 	KeyValues kv = {};
 	ImportKeyValues(&kv, "test.vmf");
-	//PrintKeyValues(&kv);
+	
+	s32 cellshadeVisgroupId = -1;
+	s32 maxVisgroupId = -1;
+	KeyValues *visgroups = KeyValuesGetChild(&kv, "visgroups");
+	{
+		if (visgroups)
+		{
+			KeyValues *visgroup = NULL;
+			KeyValuesResetIteration(visgroups);
+			while (KeyValuesGetNextChild(visgroups, &visgroup, "visgroup"))
+			{
+				KeyValues *nameKv = KeyValuesGetChild(visgroup, "name");
+				KeyValues *visgroupIdKv = KeyValuesGetChild(visgroup, "visgroupid");
+				s32 visgroupId = -1;
+				if (nameKv && visgroupIdKv)
+				{
+					if (StringToS32(visgroupIdKv->value, &visgroupId))
+					{
+						if (StringEquals(nameKv->value, "Cellshade"))
+						{
+							cellshadeVisgroupId = visgroupId;
+						}
+						maxVisgroupId = MAX(maxVisgroupId, visgroupId);
+					}
+				}
+			}
+		}
+	}
+	
+	if (cellshadeVisgroupId < 0 || maxVisgroupId < 0)
+	{
+		printf("ERROR: Couldn't find the \"Cellshade\" visgroup. To mark brush entities for cell shading, you have to create a visgroup named \"Cellshade\" and put the entities in it.");
+		getchar();
+		return 0;
+	}
+	
+	// NOTE(GameChaos): add "Cellshade Generated" visgroup
+	s32 cellshadeGenVisgroup = ++maxVisgroupId;
+	{
+		KeyValues cellshadeGen = {"visgroup"};
+		KeyValuesAddChild(&cellshadeGen, "name", "Cellshade Generated");
+		char id[64];
+		Format(id, sizeof(id), "%i", cellshadeGenVisgroup);
+		KeyValuesAddChild(&cellshadeGen, "visgroupid", id);
+		// NOTE(GameChaos): arbitrary colour, don't care for now.
+		KeyValuesAddChild(&cellshadeGen, "color", "255 0 0");
+		KeyValuesAppend(visgroups, cellshadeGen);
+		KeyValuesFree(&cellshadeGen);
+	}
+	
+	char genVisgroupIdStr[32];
+	Format(genVisgroupIdStr, sizeof(genVisgroupIdStr), "%i", cellshadeGenVisgroup);
 	
 	s32 biggestId = -1;
 	{
 		KeyValues *entParams = NULL;
+		KeyValuesResetIteration(&kv);
 		while (KeyValuesGetNextChild(&kv, &entParams, NULL))
 		{
 			if (StringEquals(entParams->key, "entity") || StringEquals(entParams->key, "world"))
 			{
 				KeyValues *idKv = KeyValuesGetChild(entParams, "id");
-				s32 id = -1;
-				StringToS32(idKv->value, &id);
-				biggestId = MAX(biggestId, id);
-				
-				KeyValues *entChild = NULL;
-				while (KeyValuesGetNextChild(entParams, &entChild, "solid"))
+				if (idKv)
 				{
-					idKv = KeyValuesGetChild(entChild, "id");
-					if (idKv)
+					s32 id = -1;
+					StringToS32(idKv->value, &id);
+					biggestId = MAX(biggestId, id);
+					
+					KeyValues *entChild = NULL;
+					while (KeyValuesGetNextChild(entParams, &entChild, "solid"))
 					{
-						id = -1;
-						StringToS32(idKv->value, &id);
-						biggestId = MAX(biggestId, id);
-						
-						KeyValues *sideParams = NULL;
-						while (KeyValuesGetNextChild(entChild, &sideParams, "side"))
+						idKv = KeyValuesGetChild(entChild, "id");
+						if (idKv)
 						{
-							idKv = KeyValuesGetChild(sideParams, "id");
-							if (idKv)
+							id = -1;
+							StringToS32(idKv->value, &id);
+							biggestId = MAX(biggestId, id);
+							
+							KeyValues *sideParams = NULL;
+							while (KeyValuesGetNextChild(entChild, &sideParams, "side"))
 							{
-								id = -1;
-								StringToS32(idKv->value, &id);
-								biggestId = MAX(biggestId, id);
+								idKv = KeyValuesGetChild(sideParams, "id");
+								if (idKv)
+								{
+									id = -1;
+									StringToS32(idKv->value, &id);
+									biggestId = MAX(biggestId, id);
+								}
 							}
 						}
 					}
@@ -255,8 +309,29 @@ int main()
 	Brush *arrNewBrushes = NULL;
 	{
 		KeyValues *entity = NULL;
+		KeyValuesResetIteration(&kv);
 		while (KeyValuesGetNextChild(&kv, &entity, "entity"))
 		{
+			KeyValues *editorSettings = KeyValuesGetChild(entity, "editor");
+			s32 visgroupId = -1;
+			if (editorSettings)
+			{
+				KeyValues *visgroupIdKv = KeyValuesGetChild(editorSettings, "visgroupid");
+				if (visgroupIdKv)
+				{
+					if (!StringToS32(visgroupIdKv->value, &visgroupId))
+					{
+						visgroupId = -1;
+					}
+				}
+			}
+			
+			if (visgroupId < 0 || visgroupId != cellshadeVisgroupId)
+			{
+				continue;
+			}
+			
+			KeyValuesResetIteration(entity);
 			KeyValues *solid = NULL;
 			while (KeyValuesGetNextChild(entity, &solid, "solid"))
 			{
@@ -297,11 +372,6 @@ int main()
 						firstSide.plane[1] = polygons[poly][1];
 						firstSide.plane[2] = polygons[poly][2];
 						
-						// NOTE(GameChaos): flip vertex winding, to flip the normal
-						// NOTE(GameChaos): we don't use normal or distance, so we don't need to calculate them.
-						//v3 temp = firstSide.plane[1];
-						//firstSide.plane[1] = firstSide.plane[2];
-						//firstSide.plane[2] = temp;
 						CopyString("TOOLS/TOOLSBLACK", firstSide.material, sizeof(firstSide.material));
 						arrput(newBrush.sides, firstSide);
 					}
@@ -332,7 +402,7 @@ int main()
 						newSide.plane[0] = avgPoint;
 						newSide.plane[1] = vert2;
 						newSide.plane[2] = vert1;
-						// NOTE(GameChaos): we don't use normal or distance, so we don't need to calculate them.
+						
 						CopyString("TOOLS/TOOLSINVISIBLE", newSide.material, sizeof(newSide.material));
 						arrput(newBrush.sides, newSide);
 					}
@@ -344,8 +414,7 @@ int main()
 	
 	
 	{
-		KeyValues entity = {};
-		CopyString("entity", entity.key, sizeof(entity.key));
+		KeyValues entity = {"entity"};
 		
 		char id[32];
 		Format(id, sizeof(id), "%i", ++biggestId);
@@ -377,6 +446,17 @@ int main()
 			KeyValuesAppend(&entity, brushKv);
 			KeyValuesFree(&brushKv);
 		}
+		
+		KeyValues editor = {"editor"};
+		// NOTE(GameChaos): arbitrary red colour again
+		KeyValuesAddChild(&editor, "color", "255 0 0");
+		KeyValuesAddChild(&editor, "visgroupid", genVisgroupIdStr);
+		KeyValuesAddChild(&editor, "visgroupshown", "1");
+		KeyValuesAddChild(&editor, "visgroupautoshown", "1");
+		KeyValuesAddChild(&editor, "logicalpos", "[0 0]");
+		KeyValuesAppend(&entity, editor);
+		KeyValuesFree(&editor);
+		
 		KeyValuesAppend(&kv, entity);
 		KeyValuesFree(&entity);
 	}

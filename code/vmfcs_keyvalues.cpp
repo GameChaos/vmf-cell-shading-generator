@@ -475,7 +475,7 @@ internal void KeyValuesAppend(KeyValues *kv, KeyValues newKeyValues)
 	}
 }
 
-internal void  KeyValuesAddChild(KeyValues *kv, char *key, char *value)
+internal void KeyValuesAddChild(KeyValues *kv, char *key, char *value)
 {
 	if (kv)
 	{

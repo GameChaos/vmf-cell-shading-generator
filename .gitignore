@@ -1,5 +1,5 @@
 build/
 .vscode/
 out.vmf
-.vmx
-.obj
+*.vmx
+*.obj
