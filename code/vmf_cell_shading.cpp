@@ -379,7 +379,7 @@ int main(s32 argCount, char *arguments[])
 		printf("Command line parsing failed!\n\n");
 		PrintCmdLine(argCount, arguments);
 		PrintCmdLineHelp(&cmdArgs);
-		goto cleanup;
+		goto error;
 	}
 	
 	if (cmdArgs.printCmdLine.isInCmdLine)
@@ -391,14 +391,14 @@ int main(s32 argCount, char *arguments[])
 	{
 		printf("ERROR: Please provide an input vmf file with -input.\n\n");
 		PrintCmdLineHelp(&cmdArgs);
-		goto cleanup;
+		goto error;
 	}
 	
 	if (!cmdArgs.output.isInCmdLine)
 	{
 		printf("ERROR: Please provide an output path with -output.\n\n");
 		PrintCmdLineHelp(&cmdArgs);
-		goto cleanup;
+		goto error;
 	}
 	
 	if (cmdArgs.help.isInCmdLine)
@@ -411,7 +411,7 @@ int main(s32 argCount, char *arguments[])
 	if (!ImportKeyValues(&kv, cmdArgs.input.stringValue))
 	{
 		printf("ERROR: Couldn't import vmf file from path \"%s\".\n\n", cmdArgs.input.stringValue);
-		goto cleanup;
+		goto error;
 	}
 	
 	printf("Generating cell shading for \"%s\" with outline width %.1f.\n\n", cmdArgs.input.stringValue, cmdArgs.outlinewidth.floatValue);
@@ -448,7 +448,7 @@ int main(s32 argCount, char *arguments[])
 	{
 		printf("ERROR: Couldn't find the \"Cellshade\" visgroup. To mark brush entities for cell shading, you have to create a visgroup named \"Cellshade\" and put the entities in it.\n\n");
 		getchar();
-		goto cleanup;
+		goto error;
 	}
 	
 	// NOTE(GameChaos): find biggest id to avoid conflicts
@@ -675,7 +675,7 @@ int main(s32 argCount, char *arguments[])
 		if (!WriteEntireFile(string, STRLEN(string), cmdArgs.debugExportObj.stringValue))
 		{
 			printf("ERROR: Failed to export debug obj to \"%s\".\n\n", cmdArgs.debugExportObj.stringValue);
-			goto cleanup;
+			goto error;
 		}
 	}
 	
@@ -690,14 +690,18 @@ int main(s32 argCount, char *arguments[])
 	if (!WriteEntireFile(newVMF, strlen(newVMF), cmdArgs.output.stringValue))
 	{
 		printf("ERROR: Failed to export instance vmf to path \"%s\".\n\n", cmdArgs.output.stringValue);
-		goto cleanup;
+		goto error;
 	}
 	
 	printf("Cell shading generation done!\n\n");
 	
-	cleanup:
 #if GC_DEBUG
 	getchar();
 #endif
 	return 0;
+	error:
+#if GC_DEBUG
+	getchar();
+#endif
+	return -1;
 }
