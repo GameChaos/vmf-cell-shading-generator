@@ -10,7 +10,15 @@ Basically, this is what it does:
 
 # Usage
 
-
+1. Download the [latest release](https://github.com/GameChaos/vmf-cell-shading-generator/releases) and put it somewhere on your computer.
+2. Open any map Hammer.
+3. Open the Run Map window in expert mode.
+4. Click on the `New` button.
+5. Click `Move Up` until the new run command is at the top of the `Compile/run command` list.
+6. On the right side of the window, click on `Cmds` and select `Executable`.
+7. Browse to where you saved the vmf_cell_shading executable and select it.
+8. Copy `-outlinewidth 2 -input $path\$file.vmf -output $path\instances\$file_cellshaded.vmf` into the parameters text box. This outputs the generated instance vmf into the `instances` folder where your vmf is. This folder has to exist. Modify these parameters as you see fit. You can add -help to the list to see more information about the commands.
+9. 
 
 # Limitations/Problems
 
