@@ -22,7 +22,7 @@ Basically, this is what it does:
 8. Browse to where you saved the `vmf_cell_shading` executable and select it.
 9. Copy `-outlinewidth 2 -input $path\$file.vmf -output $path\instances\$file_cellshaded.vmf` into the `Parameters:` text box. This options output the generated instance vmf into the `instances` folder where your vmf is. This folder has to exist. Modify these parameters as you see fit. You can add -help to the list to see more information about the commands.
 
-[These instructions, but in video form](link)
+[These instructions, but in video form](https://youtu.be/JhnN4ZsGzhE)
 
 ## Map setup
 
@@ -34,7 +34,7 @@ Basically, this is what it does:
 7. You can now compile your map and see the epic cell shading in-game!
 8. To see the cell shading update in hammer you have to close and reopen the map unfortunately.
 
-[These instructions, but in video form](link)
+[These instructions, but in video form](https://youtu.be/PboGaKNj2mY)
 
 # Limitations/Problems
 
