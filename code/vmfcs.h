@@ -16,29 +16,38 @@ struct ReadFileResult
 	void *memory;
 };
 
-typedef struct Mesh {
-    s32 vertexCount;        // Number of vertices stored in arrays
-    s32 triangleCount;      // Number of triangles stored (indexed or not)
+enum CmdArgType
+{
+	CMDARG_NONE,
+	CMDARG_STRING,
 	
-    // Default vertex data
-    float *vertices;        // Vertex position (XYZ - 3 components per vertex) (shader-location = 0)
-    float *texcoords;       // Vertex texture coordinates (UV - 2 components per vertex) (shader-location = 1)
-    float *texcoords2;      // Vertex second texture coordinates (useful for lightmaps) (shader-location = 5)
-    float *normals;         // Vertex normals (XYZ - 3 components per vertex) (shader-location = 2)
-    float *tangents;        // Vertex tangents (XYZW - 4 components per vertex) (shader-location = 4)
-	u8 *colors;  // Vertex colors (RGBA - 4 components per vertex) (shader-location = 3)
-	u16 *indices;// Vertex indices (in case vertex data comes indexed)
+	CMDARGTYPE_COUNT,
+};
+
+struct CmdArg
+{
+	char argName[64];
+	char description[128];
 	
-    // Animation vertex data
-    float *animVertices;    // Animated vertex positions (after bones transformations)
-    float *animNormals;     // Animated normals (after bones transformations)
-    s32 *boneIds;           // Vertex bone ids, up to 4 bones influence by vertex (skinning)
-    float *boneWeights;     // Vertex bone weight, up to 4 bones influence by vertex (skinning)
+	CmdArgType type;
+	char stringValue[512];
 	
-    // OpenGL identifiers
-    u32 vaoId;     // OpenGL Vertex Array Object id
-	u32 *vboId;    // OpenGL Vertex Buffer Objects id (default vertex data)
-} Mesh;
+	b32 isInCmdLine; // whether this exists on the command line
+};
+
+union CmdArgs
+{
+	struct
+	{
+		CmdArg help;
+		CmdArg debugExportObj;
+		CmdArg input;
+		CmdArg output;
+	};
+	CmdArg args[4];
+};
+
+static_assert(ARRAY_LENGTH(MEMBER(CmdArgs, args)) * sizeof(CmdArg) == sizeof(CmdArgs), "CmdArgs union args are mismatched!");
 
 internal void DuplicateMemory(void *source, void *destination, size_t bytes, size_t destSize);
 internal void CopyString(char *source, char *dest, size_t destSize);
@@ -50,6 +59,11 @@ internal f32 StringToF32(char *str);
 internal ReadFileResult ReadEntireFile(char *filePath);
 internal s32 ScanStringFormat(char *string, char *format, ...);
 internal s32 Format(char *buffer, size_t maxlen, char *format, ...);
+
+global char *g_cmdArgTypeStrings[CMDARGTYPE_COUNT] = {
+	"None",
+	"String",
+};
 
 local_persist char *emptyVmf = R"(
 versioninfo

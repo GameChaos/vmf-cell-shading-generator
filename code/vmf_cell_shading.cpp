@@ -61,14 +61,22 @@ internal ReadFileResult ReadEntireFile(char *filePath)
 	return result;
 }
 
-internal void WriteEntireFile(void *data, s64 bytes, char *path)
+internal b32 WriteEntireFile(void *data, s64 bytes, char *path)
 {
+	b32 result = false;
+	
 	FILE *file = fopen(path, "wb");
 	if (file)
 	{
-		fwrite(data, 1, bytes, file);
+		s64 elementsWritten = fwrite(data, 1, bytes, file);
+		if (elementsWritten == bytes)
+		{
+			result = true;
+		}
 		fclose(file);
 	}
+	
+	return result;
 }
 
 internal b32 StringEquals(char *str1, char *str2)
@@ -206,10 +214,169 @@ internal s32 Format(char *buffer, size_t maxlen, char *format, ...)
 	return result;
 }
 
-int main()
+internal b32 ParseCmdArgs(CmdArgs *cmdArgs, s32 argCount, char *arguments[])
 {
+	b32 result = true;
+	for (s32 i = 1; i < argCount; i++)
+	{
+		if (!result)
+		{
+			break;
+		}
+		b32 found = false;
+		for (s32 j = 0; j < ARRAY_LENGTH(cmdArgs->args); j++)
+		{
+			if (i >= argCount)
+			{
+				break;
+			}
+			
+			if (StringEquals(arguments[i], cmdArgs->args[j].argName))
+			{
+				found = true;
+				if (cmdArgs->args[j].isInCmdLine)
+				{
+					printf("ERROR: %s is used twice in the command line!\n", arguments[i]);
+					result = false;
+					break;
+				}
+				
+				cmdArgs->args[j].isInCmdLine = true;
+				if (cmdArgs->args[j].type == CMDARG_STRING)
+				{
+					if (i + 1 < argCount)
+					{
+						if (arguments[i + 1][0] != '-')
+						{
+							s64 argLen = strlen(arguments[i + 1]);
+							if (argLen >= sizeof(cmdArgs->args[j].stringValue))
+							{
+								printf("ERROR: String is too long for argument %s! Maximum length is %lli characters.\n\n",
+									   arguments[i], (s64)sizeof(MEMBER(CmdArg, stringValue)) - 1);
+								result = false;
+								break;
+							}
+							
+							memcpy(cmdArgs->args[j].stringValue, arguments[i + 1], argLen);
+							cmdArgs->args[j].stringValue[argLen] = '\0';
+							
+							i++;
+						}
+						else
+						{
+							// oh no sad sad :(
+							printf("ERROR: Argument missing for command %s\n\n", arguments[i]);
+							result = false;
+							break;
+						}
+					}
+					else
+					{
+						// oh no sad sad :(
+						printf("ERROR: Argument missing for command %s\n\n", arguments[i]);
+						result = false;
+						break;
+					}
+				}
+				continue;
+			}
+			
+			if (found)
+			{
+				break;
+			}
+		}
+		
+		if (!found)
+		{
+			printf("Invalid command \"%s\"\n\n", arguments[i]);
+			result = false;
+			break;
+		}
+	}
+	
+	return result;
+}
+
+internal void PrintCmdLineHelp(CmdArgs *cmdArgs)
+{
+	//printf("\n");
+	printf("Available commands:\n");
+	for (s32 i = 0; i < ARRAY_LENGTH(cmdArgs->args); i++)
+	{
+		if (cmdArgs->args[i].type == CMDARG_NONE)
+		{
+			printf("%s: %s \n",
+				   cmdArgs->args[i].argName,
+				   cmdArgs->args[i].description);
+		}
+		else
+		{
+			printf("%s [%s] : %s \n",
+				   cmdArgs->args[i].argName,
+				   g_cmdArgTypeStrings[cmdArgs->args[i].type],
+				   cmdArgs->args[i].description);
+		}
+	}
+	printf("\n");
+}
+
+internal void PrintCmdLine(s32 argCount, char *arguments[])
+{
+	printf("Command line: \"");
+	for (s32 cmd = 1; cmd < argCount; cmd++)
+	{
+		printf("%s ", arguments[cmd]);
+	}
+	printf("\"\n\n");
+}
+
+int main(s32 argCount, char *arguments[])
+{
+	CmdArgs cmdArgs = {};
+	cmdArgs.help = {"-help", "Help!!!", CMDARG_NONE};
+	cmdArgs.debugExportObj = {"-debugexportobj", "Export an obj file of brush faces for debugging.", CMDARG_STRING};
+	cmdArgs.input = {"-input", "Input vmf file to be used for generating cell shading.", CMDARG_STRING};
+	cmdArgs.output = {"-output", "Output instance vmf file of cell shading brushes.", CMDARG_STRING};
+	
+	if (!ParseCmdArgs(&cmdArgs, argCount, arguments))
+	{
+		printf("Command line parsing failed!\n\n");
+		PrintCmdLine(argCount, arguments);
+		PrintCmdLineHelp(&cmdArgs);
+		goto cleanup;
+	}
+	
+	PrintCmdLine(argCount, arguments);
+	
+	if (!cmdArgs.input.isInCmdLine)
+	{
+		printf("ERROR: Please provide an input vmf file with -input.\n\n");
+		PrintCmdLineHelp(&cmdArgs);
+		goto cleanup;
+	}
+	
+	if (!cmdArgs.output.isInCmdLine)
+	{
+		printf("ERROR: Please provide an output path with -output.\n\n");
+		PrintCmdLineHelp(&cmdArgs);
+		goto cleanup;
+	}
+	
+	if (cmdArgs.help.isInCmdLine)
+	{
+		PrintCmdLineHelp(&cmdArgs);
+	}
+	
+	
 	KeyValues kv = {};
-	ImportKeyValues(&kv, "test.vmf");
+	if (!ImportKeyValues(&kv, cmdArgs.input.stringValue))
+	{
+		printf("ERROR: Couldn't import vmf file from path \"%s\".\n\n", cmdArgs.input.stringValue);
+		goto cleanup;
+	}
+	
+	printf("Generating cell shading for \"%s\".\n\n", cmdArgs.input.stringValue);
 	
 	s32 cellshadeVisgroupId = -1;
 	s32 maxVisgroupId = -1;
@@ -241,9 +408,9 @@ int main()
 	
 	if (cellshadeVisgroupId < 0 || maxVisgroupId < 0)
 	{
-		printf("ERROR: Couldn't find the \"Cellshade\" visgroup. To mark brush entities for cell shading, you have to create a visgroup named \"Cellshade\" and put the entities in it.");
+		printf("ERROR: Couldn't find the \"Cellshade\" visgroup. To mark brush entities for cell shading, you have to create a visgroup named \"Cellshade\" and put the entities in it.\n\n");
 		getchar();
-		return 0;
+		goto cleanup;
 	}
 	
 	// NOTE(GameChaos): find biggest id to avoid conflicts
@@ -336,7 +503,6 @@ int main()
 						brushSide.distance += 2.0;
 					}
 					arrput(baseBrush.sides, brushSide);
-					
 				}
 				
 				v3 **polygons = GenerateBrushPolygons(&baseBrush);
@@ -439,6 +605,7 @@ int main()
 	}
 	
 	// NOTE(GameChaos): make an obj file for debugging
+	if (cmdArgs.debugExportObj.isInCmdLine)
 	{
 		KeyValues *entity = NULL;
 		String *string = NULL;
@@ -467,7 +634,11 @@ int main()
 				}
 			}
 		}
-		WriteEntireFile(string, STRLEN(string), "out.obj");
+		if (!WriteEntireFile(string, STRLEN(string), cmdArgs.debugExportObj.stringValue))
+		{
+			printf("ERROR: Failed to export debug obj to \"%s\".\n\n", cmdArgs.debugExportObj.stringValue);
+			goto cleanup;
+		}
 	}
 	
 	char *editedOriginalVmf = KeyValuesToString(&kv);
@@ -477,9 +648,18 @@ int main()
 	char *newEntities = KeyValuesToString(&newEntitiesKv);
 	STRCONCATENATE(newVMF, newEntities);
 	
-	// TODO: custom name
-	WriteEntireFile(newVMF, strlen(newVMF), "instances/test_cellshaded.vmf");
+	printf("Writing vmf of cell shading brushes to \"%s\".\n\n", cmdArgs.output.stringValue);
+	if (!WriteEntireFile(newVMF, strlen(newVMF), cmdArgs.output.stringValue))
+	{
+		printf("ERROR: Failed to export instance vmf to path \"%s\".\n\n", cmdArgs.output.stringValue);
+		goto cleanup;
+	}
 	
-	printf("done!\n");
+	printf("Cell shading generation done!\n\n");
+	
+	cleanup:
+#if GC_DEBUG
 	getchar();
+#endif
+	return 0;
 }
