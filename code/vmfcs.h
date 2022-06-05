@@ -10,7 +10,7 @@
 
 #define MAP_MAX_SIZE 16384.0f
 
-#define VMFCS_VERSION "0.0.0"
+#define VMFCS_VERSION "0.0.1"
 
 struct ReadFileResult
 {
