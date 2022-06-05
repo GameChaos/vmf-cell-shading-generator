@@ -51,4 +51,40 @@ internal ReadFileResult ReadEntireFile(char *filePath);
 internal s32 ScanStringFormat(char *string, char *format, ...);
 internal s32 Format(char *buffer, size_t maxlen, char *format, ...);
 
+local_persist char *emptyVmf = R"(
+versioninfo
+{
+	"editorversion" "400"
+	"editorbuild" "8860"
+	"mapversion" "0"
+	"formatversion" "100"
+	"prefab" "0"
+}
+viewsettings
+{
+	"bSnapToGrid" "1"
+	"bShowGrid" "1"
+	"bShowLogicalGrid" "0"
+	"nGridSpacing" "64"
+}
+world
+{
+	"id" "1"
+	"mapversion" "0"
+	"classname" "worldspawn"
+	"detailmaterial" "detail/detailsprites"
+	"detailvbsp" "detail.vbsp"
+	"maxpropscreenwidth" "-1"
+	"skyname" "sky_dust"
+}
+cameras
+{
+	"activecamera" "-1"
+}
+cordons
+{
+	"active" "0"
+}
+)";
+
 #endif //VMFCS_H

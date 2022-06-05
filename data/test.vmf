@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8860"
-	"mapversion" "30"
+	"mapversion" "33"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -79,7 +79,7 @@ bgimages_plus
 world
 {
 	"id" "1"
-	"mapversion" "30"
+	"mapversion" "33"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -2669,9 +2669,26 @@ entity
 	editor
 	{
 		"color" "0 180 0"
+		"visgroupid" "1"
 		"visgroupshown" "1"
 		"visgroupautoshown" "1"
 		"logicalpos" "[0 2000]"
+	}
+}
+entity
+{
+	"id" "239"
+	"classname" "func_instance"
+	"angles" "-0 0 0"
+	"file" "instances/test_cellshaded.vmf"
+	"fixup_style" "0"
+	"origin" "0 0 0"
+	editor
+	{
+		"color" "220 30 220"
+		"visgroupshown" "1"
+		"visgroupautoshown" "1"
+		"logicalpos" "[0 0]"
 	}
 }
 cameras

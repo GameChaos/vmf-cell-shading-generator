@@ -246,23 +246,7 @@ int main()
 		return 0;
 	}
 	
-	// NOTE(GameChaos): add "Cellshade Generated" visgroup
-	s32 cellshadeGenVisgroup = ++maxVisgroupId;
-	{
-		KeyValues cellshadeGen = {"visgroup"};
-		KeyValuesAddChild(&cellshadeGen, "name", "Cellshade Generated");
-		char id[64];
-		Format(id, sizeof(id), "%i", cellshadeGenVisgroup);
-		KeyValuesAddChild(&cellshadeGen, "visgroupid", id);
-		// NOTE(GameChaos): arbitrary colour, don't care for now.
-		KeyValuesAddChild(&cellshadeGen, "color", "255 0 0");
-		KeyValuesAppend(visgroups, cellshadeGen);
-		KeyValuesFree(&cellshadeGen);
-	}
-	
-	char genVisgroupIdStr[32];
-	Format(genVisgroupIdStr, sizeof(genVisgroupIdStr), "%i", cellshadeGenVisgroup);
-	
+	// NOTE(GameChaos): find biggest id to avoid conflicts
 	s32 biggestId = -1;
 	{
 		KeyValues *entParams = NULL;
@@ -306,7 +290,8 @@ int main()
 		}
 	}
 	
-	Brush *arrNewBrushes = NULL;
+	// NOTE(GameChaos): generate cell shading brushes
+	Brush **arrNewBrushes = NULL;
 	{
 		KeyValues *entity = NULL;
 		KeyValuesResetIteration(&kv);
@@ -333,6 +318,7 @@ int main()
 			
 			KeyValuesResetIteration(entity);
 			KeyValues *solid = NULL;
+			Brush *brushes = NULL;
 			while (KeyValuesGetNextChild(entity, &solid, "solid"))
 			{
 				// NOTE(GameChaos): entity -> solid
@@ -406,13 +392,14 @@ int main()
 						CopyString("TOOLS/TOOLSINVISIBLE", newSide.material, sizeof(newSide.material));
 						arrput(newBrush.sides, newSide);
 					}
-					arrput(arrNewBrushes, newBrush);
+					arrput(brushes, newBrush);
 				}
 			}
+			arrput(arrNewBrushes, brushes);
 		}
 	}
-	
-	
+	KeyValues newEntitiesKv = {};
+	for (s32 i = 0; i < arrlen(arrNewBrushes); i++)
 	{
 		KeyValues entity = {"entity"};
 		
@@ -438,26 +425,16 @@ int main()
 		KeyValuesAddChild(&entity, "rendermode", "0");
 		KeyValuesAddChild(&entity, "shadowdepthnocache", "0");
 		
-		for (s32 brush = 0; brush < arrlen(arrNewBrushes); brush++)
+		for (s32 brush = 0; brush < arrlen(arrNewBrushes[i]); brush++)
 		{
 			KeyValues brushKv = {};
-			BrushToKeyValues(&arrNewBrushes[brush], &brushKv, &biggestId);
+			BrushToKeyValues(&arrNewBrushes[i][brush], &brushKv, &biggestId);
 			//PrintKeyValues(&brushKv);
 			KeyValuesAppend(&entity, brushKv);
 			KeyValuesFree(&brushKv);
 		}
 		
-		KeyValues editor = {"editor"};
-		// NOTE(GameChaos): arbitrary red colour again
-		KeyValuesAddChild(&editor, "color", "255 0 0");
-		KeyValuesAddChild(&editor, "visgroupid", genVisgroupIdStr);
-		KeyValuesAddChild(&editor, "visgroupshown", "1");
-		KeyValuesAddChild(&editor, "visgroupautoshown", "1");
-		KeyValuesAddChild(&editor, "logicalpos", "[0 0]");
-		KeyValuesAppend(&entity, editor);
-		KeyValuesFree(&editor);
-		
-		KeyValuesAppend(&kv, entity);
+		KeyValuesAppend(&newEntitiesKv, entity);
 		KeyValuesFree(&entity);
 	}
 	
@@ -493,9 +470,16 @@ int main()
 		WriteEntireFile(string, STRLEN(string), "out.obj");
 	}
 	
-	char *newVMF = KeyValuesToString(&kv);
+	char *editedOriginalVmf = KeyValuesToString(&kv);
 	
-	WriteEntireFile(newVMF, strlen(newVMF), "out.vmf");
+	String *newVMF = NULL;
+	STRCONCATENATE(newVMF, emptyVmf);
+	char *newEntities = KeyValuesToString(&newEntitiesKv);
+	STRCONCATENATE(newVMF, newEntities);
+	
+	// TODO: custom name
+	WriteEntireFile(newVMF, strlen(newVMF), "instances/test_cellshaded.vmf");
+	
 	printf("done!\n");
 	getchar();
 }
