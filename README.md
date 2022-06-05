@@ -30,7 +30,7 @@ Basically, this is what it does:
 3. Create a point entity **at the exact origin of the hammer grid** and name it `func_instance`.
 4. Change `VMF Filename` to `instances/<YOUR MAP NAME HERE>_cellshaded.vmf`. For example if your map name is test.vmf, then you type `instances/test_cellshaded.vmf`.
 5. If the `instances` folder doesn't exist in the folder where your vmf is, then create it!
-6. Create a visgroup named `Cellshade` and put the entities (no world brushes currently) you want cell shaded in that visgroup.
+6. Create a visgroup named `Cellshade` and put the entities (no world brushes currently) you want cell shaded in that visgroup. Faces that are textured with `tools/toolsnodraw` won't have an outline generated.
 7. You can now compile your map and see the epic cell shading in-game!
 8. To see the cell shading update in hammer you have to close and reopen the map unfortunately.
 
