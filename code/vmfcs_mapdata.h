@@ -6,7 +6,7 @@
 #include "vmfcs_keyvalues.h"
 
 // TODO: what is the actual max?
-#define VMF_MAX_MATERIAL_LEN 256
+#define VMF_MAX_MATERIAL_LEN 512
 
 struct TextureTransform
 {

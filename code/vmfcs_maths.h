@@ -16,8 +16,6 @@ struct v3
 	f32 x, y, z;
 };
 
-//typedef Vector2 v2;
-//typedef Vector3 v3;
 
 //Euler angles in degrees
 typedef v3 Angles;
@@ -197,19 +195,19 @@ inline f32 LinearInterpolate(f32 f1, f32 f2, f32 fraction)
 	return result;
 }
 
-inline s32 RoundReal32ToS32(f32 value)
+inline s32 RoundF32ToS32(f32 value)
 {
 	s32 result = (s32)roundf(value);
 	return result;
 }
 
-inline s32 FloorReal32ToS32(f32 value)
+inline s32 FloorF32ToS32(f32 value)
 {
 	s32 result = (s32)floorf(value);
 	return result;
 }
 
-inline s32 TruncateReal32ToS32(f32 value)
+inline s32 TruncateF32ToS32(f32 value)
 {
 	s32 result = (s32)value;
 	return result;
@@ -321,7 +319,7 @@ inline v3 NormaliseVector(v3 vec)
 	return result;
 }
 
-void AnglesToVectors(Angles angles, v3 *forwards, v3 *right, v3 *up)
+inline void AnglesToVectors(Angles angles, v3 *forwards, v3 *right, v3 *up)
 {
 	float sinPitch = Sine(DegToRad(angles.x));
 	float sinYaw = Sine(DegToRad(angles.y));
@@ -352,7 +350,7 @@ void AnglesToVectors(Angles angles, v3 *forwards, v3 *right, v3 *up)
 	}
 }
 
-Angles VectorToAngles(v3 vec)
+inline Angles VectorToAngles(v3 vec)
 {
 	Angles angles = {};
 	
@@ -398,7 +396,7 @@ inline f32 DotProduct(v3 a, v3 b)
 // v: a vector in 3D space
 // k: a unit vector describing the axis of rotation
 // theta: the angle (in radians) that v rotates around k
-v3 RotateVector(v3 vec, v3 axis, f32 theta)
+inline v3 RotateVector(v3 vec, v3 axis, f32 theta)
 {
 	f32 cosTheta = Cosine(theta);
 	f32 sinTheta = Sine(theta);
@@ -411,7 +409,7 @@ v3 RotateVector(v3 vec, v3 axis, f32 theta)
 	return result;
 }
 
-v3 GetNonParallelVector(v3 vec)
+inline v3 GetNonParallelVector(v3 vec)
 {
 	v3 result = {};
 	
