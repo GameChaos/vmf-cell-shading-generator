@@ -3,7 +3,7 @@
 where /q cl
 IF ERRORLEVEL 1 call "set_up_msvc.bat"
 
-set CommonCompilerFlags=-MTd -nologo -fp:fast -GR- -EHa- -O2 -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4533 -FC -Z7 -DGC_DEBUG=1 -D_CRT_SECURE_NO_WARNINGS 
+set CommonCompilerFlags=-MTd -nologo -fp:fast -GR- -EHa- -O2 -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4533 -FC -Z7 -DGC_DEBUG=0 -D_CRT_SECURE_NO_WARNINGS 
 set CommonLinkerFlags= -incremental:no -opt:ref
 
 pushd project

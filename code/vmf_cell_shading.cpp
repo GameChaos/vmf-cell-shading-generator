@@ -372,6 +372,8 @@ internal void PrintCmdLine(s32 argCount, char *arguments[])
 
 int main(s32 argCount, char *arguments[])
 {
+	// NOTE(GameChaos): TODO: negative values for floats/integers on the cmd line don't work right
+	// now cos it thinks it's another parameter because of the - character.
 	CmdArgs cmdArgs = {};
 	cmdArgs.help = {"-help", "Help!!!", CMDARG_NONE};
 	cmdArgs.printCmdLine = {"-printcmdline", "Print the command line for debugging.", CMDARG_NONE};

@@ -13,7 +13,7 @@
 #define INVISIBLE_FACE_EXTRUSION 8.0f
 #define INVISIBLE_MATERIAL "TOOLS/TOOLSINVISIBLE"
 
-#define VMFCS_VERSION "0.0.1"
+#define VMFCS_VERSION "0.1.0"
 
 struct ReadFileResult
 {
