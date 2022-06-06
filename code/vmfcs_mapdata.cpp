@@ -49,11 +49,11 @@ internal v3 **GenerateBrushPolygons(Brush *brush)
 {
 	v3 **polygons = NULL;
 	
-	u32 sideCount = (u32)arrlen(brush->sides);
+	u32 sideCount = (u32)arrlen(brush->arrSides);
 	
 	for (u32 sideIndex = 0; sideIndex < sideCount; sideIndex++)
 	{
-		BrushSide *side = &brush->sides[sideIndex];
+		BrushSide *side = &brush->arrSides[sideIndex];
 		
 		f32 normalLen = GetVectorLength(side->normal);
 		if (normalLen < 0.9 || normalLen > 1.1)
@@ -82,7 +82,7 @@ internal v3 **GenerateBrushPolygons(Brush *brush)
 		
 		for (u32 j = 0; j < sideCount; j++)
 		{
-			BrushSide *side2 = &brush->sides[j];
+			BrushSide *side2 = &brush->arrSides[j];
 			if (side2 == side)
 			{
 				continue;
@@ -217,7 +217,7 @@ internal b32 ParseVMFSolid(KeyValues *kv, Brush *outBrush)
 				result = false;
 			}
 			
-			arrput(outBrush->sides, side);
+			arrput(outBrush->arrSides, side);
 		}
 		else
 		{
@@ -244,9 +244,9 @@ internal b32 BrushToKeyValues(Brush *brush, KeyValues *out, s32 *id)
 		Format(idKv.value, ARRAY_LENGTH(idKv.value), "%i", (*id)++);
 		KeyValuesAppend(out, idKv);
 		
-		for (s32 sideIndex = 0; sideIndex < arrlen(brush->sides); sideIndex++)
+		for (s32 sideIndex = 0; sideIndex < arrlen(brush->arrSides); sideIndex++)
 		{
-			BrushSide *side = &brush->sides[sideIndex];
+			BrushSide *side = &brush->arrSides[sideIndex];
 			
 			KeyValues sideKv = {};
 			CopyString("side", sideKv.key, ARRAY_LENGTH(sideKv.key));

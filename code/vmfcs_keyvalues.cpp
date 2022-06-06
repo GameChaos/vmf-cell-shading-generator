@@ -7,7 +7,7 @@ inline b32 KVIsControlCharacter(char character)
 }
 
 // TODO: move this out of here?
-inline b32 IsWhiteSpace(char character)
+inline b32 KVIsWhiteSpace(char character)
 {
 	b32 result = character == ' '
 		|| character == '\r'
@@ -17,7 +17,7 @@ inline b32 IsWhiteSpace(char character)
 }
 
 // TODO: move this out of here?
-inline b32 IsEndOfLine(char character)
+inline b32 KVIsEndOfLine(char character)
 {
 	b32 result = (character == '\n'
 				  || character == '\r');
@@ -25,7 +25,7 @@ inline b32 IsEndOfLine(char character)
 }
 
 // TODO: move this out of here?
-inline b32 IsComment(char *string)
+inline b32 KVIsComment(char *string)
 {
 	return string[0] == '/' && string[1] == '/';
 }
@@ -41,7 +41,7 @@ internal void EatWhiteSpace(KVTokeniser *tokeniser)
 		else if (tokeniser->at[0] == '/' && tokeniser->at[1] == '/')
 		{
 			tokeniser->at += 2;
-			while (tokeniser->at[0] && !IsEndOfLine(tokeniser->at[0]))
+			while (tokeniser->at[0] && !KVIsEndOfLine(tokeniser->at[0]))
 			{
 				++tokeniser->at;
 			}
@@ -103,9 +103,9 @@ internal KVToken KVGetToken(KVTokeniser *tokeniser)
 				}
 				else
 				{
-					if (IsWhiteSpace(tokeniser->at[0])
+					if (KVIsWhiteSpace(tokeniser->at[0])
 						|| KVIsControlCharacter(tokeniser->at[0])
-						|| IsComment(tokeniser->at))
+						|| KVIsComment(tokeniser->at))
 					{
 						token.textLength = tokeniser->at - token.text;
 						break;
@@ -127,102 +127,7 @@ internal KVToken KVGetToken(KVTokeniser *tokeniser)
 	return token;
 }
 
-internal KeyValues KeyValuesFromString(KVTokeniser *tokeniser)
-{
-	KeyValues keyValues = {};
-	
-	KeyValues tempValues = {};
-	b32 parsing = true;
-	
-	KVToken lastToken = {};
-	while (parsing)
-	{
-		KVToken token = KVGetToken(tokeniser);
-		
-		switch (token.type)
-		{
-			case TOKEN_OPENBRACE:
-			{
-				// repetitive code
-				if (tempValues.key[0])
-				{
-					KeyValuesAppend(&keyValues, tempValues);
-					// clear tempValues
-					tempValues = {};
-				}
-				
-				if (keyValues.childCount)
-				{
-					KeyValues newKv = KeyValuesFromString(tokeniser);
-					keyValues.children[keyValues.childCount - 1].children = newKv.children;
-					keyValues.children[keyValues.childCount - 1].childCount = newKv.childCount;
-					keyValues.children[keyValues.childCount - 1].childBytes = newKv.childBytes;
-				}
-			} break;
-			
-			case TOKEN_CLOSEBRACE:
-			{
-				// repetitive code
-				if (tempValues.key[0])
-				{
-					KeyValuesAppend(&keyValues, tempValues);
-					// clear tempValues
-					tempValues = {};
-				}
-				
-				parsing = false;
-			} break;
-			
-			case TOKEN_IDENTIFIER:
-			{
-				if (tempValues.key[0] && tempValues.value[0])
-				{
-					// TODO: errors!
-					printf("???????????");
-					ASSERT(!"this shouldn't happen, there can only be 2 identifiers on 1 line!");
-				}
-				else if (tempValues.key[0])
-				{
-					CopyString(token.text, token.textLength, tempValues.value, ARRAY_LENGTH(tempValues.value));
-				}
-				else
-				{
-					CopyString(token.text, token.textLength, tempValues.key, ARRAY_LENGTH(tempValues.key));
-				}
-			} break;
-			
-			case TOKEN_NEWLINE:
-			{
-				// repetitive code
-				if (tempValues.key[0])
-				{
-					KeyValuesAppend(&keyValues, tempValues);
-					// clear tempValues
-					tempValues = {};
-				}
-				// clear tempValues
-				tempValues = {};
-			} break;
-			
-			case TOKEN_ENDOFSTREAM:
-			{
-				parsing = false;
-			} break;
-			
-			default:
-			{
-				printf("[KeyValues] Unknown token %i \"%.*s\"\n", token.type, (s32)token.textLength, token.text);
-			} break;
-		}
-		
-		lastToken = token;
-	}
-	
-	return keyValues;
-}
-
-// only use the first parameter, the other 2 are internal.
-internal char *KeyValuesToString(KeyValues *kv, String *string, s32 recursionDepth)
+internal char *KeyValuesToString_(KeyValues *kv, String *string, s32 recursionDepth)
 {
 	if (!kv)
 	{
@@ -276,7 +181,7 @@ internal char *KeyValuesToString(KeyValues *kv, String *string, s32 recursionDep
 		
 		for (u32 i = 0; i < kv->childCount; i++)
 		{
-			string = KeyValuesToString(&kv->children[i], string, recursionDepth + 1);
+			string = KeyValuesToString_(&kv->children[i], string, recursionDepth + 1);
 		}
 		
 		if (kv->key[0])
@@ -295,6 +200,13 @@ internal char *KeyValuesToString(KeyValues *kv, String *string, s32 recursionDep
 	}
 	
 	return string;
+}
+
+internal char *KeyValuesToString(KeyValues *kv)
+{
+	char *result = KeyValuesToString_(kv, NULL, 0);
+	
+	return result;
 }
 
 internal void PrintKeyValues(KeyValues *kv, s32 recursionDepth)
@@ -349,11 +261,11 @@ internal void PrintKeyValues(KeyValues *kv, s32 recursionDepth)
 	}
 }
 
-internal KeyValues *KeyValuesGetChild(KeyValues *kv, char *keyName)
+internal b32 KeyValuesGetChild(KeyValues *kv, KeyValues **out, char *keyName)
 {
-	KeyValues *result = 0;
+	b32 result = false;
 	
-	if (kv)
+	if (kv && out)
 	{
 		if (kv->children)
 		{
@@ -361,7 +273,8 @@ internal KeyValues *KeyValuesGetChild(KeyValues *kv, char *keyName)
 			{
 				if (StringEquals(kv->children[i].key, keyName))
 				{
-					result = &kv->children[i];
+					*out = &kv->children[i];
+					result = true;
 					break;
 				}
 			}
@@ -501,6 +414,100 @@ internal void KeyValuesFree(KeyValues *kv)
 		}
 		FreeMemory(kv->children);
 	}
+}
+
+internal KeyValues KeyValuesFromString(KVTokeniser *tokeniser)
+{
+	KeyValues keyValues = {};
+	
+	KeyValues tempValues = {};
+	b32 parsing = true;
+	
+	KVToken lastToken = {};
+	while (parsing)
+	{
+		KVToken token = KVGetToken(tokeniser);
+		
+		switch (token.type)
+		{
+			case TOKEN_OPENBRACE:
+			{
+				// repetitive code
+				if (tempValues.key[0])
+				{
+					KeyValuesAppend(&keyValues, tempValues);
+					// clear tempValues
+					tempValues = {};
+				}
+				
+				if (keyValues.childCount)
+				{
+					KeyValues newKv = KeyValuesFromString(tokeniser);
+					keyValues.children[keyValues.childCount - 1].children = newKv.children;
+					keyValues.children[keyValues.childCount - 1].childCount = newKv.childCount;
+					keyValues.children[keyValues.childCount - 1].childBytes = newKv.childBytes;
+				}
+			} break;
+			
+			case TOKEN_CLOSEBRACE:
+			{
+				// repetitive code
+				if (tempValues.key[0])
+				{
+					KeyValuesAppend(&keyValues, tempValues);
+					// clear tempValues
+					tempValues = {};
+				}
+				
+				parsing = false;
+			} break;
+			
+			case TOKEN_IDENTIFIER:
+			{
+				if (tempValues.key[0] && tempValues.value[0])
+				{
+					// TODO: errors!
+					printf("???????????");
+					ASSERT(!"this shouldn't happen, there can only be 2 identifiers on 1 line!");
+				}
+				else if (tempValues.key[0])
+				{
+					CopyString(token.text, token.textLength, tempValues.value, ARRAY_LENGTH(tempValues.value));
+				}
+				else
+				{
+					CopyString(token.text, token.textLength, tempValues.key, ARRAY_LENGTH(tempValues.key));
+				}
+			} break;
+			
+			case TOKEN_NEWLINE:
+			{
+				// repetitive code
+				if (tempValues.key[0])
+				{
+					KeyValuesAppend(&keyValues, tempValues);
+					// clear tempValues
+					tempValues = {};
+				}
+				// clear tempValues
+				tempValues = {};
+			} break;
+			
+			case TOKEN_ENDOFSTREAM:
+			{
+				parsing = false;
+			} break;
+			
+			default:
+			{
+				printf("[KeyValues] Unknown token %i \"%.*s\"\n", token.type, (s32)token.textLength, token.text);
+			} break;
+		}
+		
+		lastToken = token;
+	}
+	
+	return keyValues;
 }
 
 internal b32 ImportKeyValues(KeyValues *kv, char *path)

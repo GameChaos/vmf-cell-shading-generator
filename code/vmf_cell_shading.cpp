@@ -418,27 +418,26 @@ int main(s32 argCount, char *arguments[])
 	
 	s32 cellshadeVisgroupId = -1;
 	s32 maxVisgroupId = -1;
-	KeyValues *visgroups = KeyValuesGetChild(&kv, "visgroups");
+	KeyValues *visgroups = NULL;
+	if (KeyValuesGetChild(&kv, &visgroups, "visgroups"))
 	{
-		if (visgroups)
+		KeyValues *visgroup = NULL;
+		KeyValuesResetIteration(visgroups);
+		while (KeyValuesGetNextChild(visgroups, &visgroup, "visgroup"))
 		{
-			KeyValues *visgroup = NULL;
-			KeyValuesResetIteration(visgroups);
-			while (KeyValuesGetNextChild(visgroups, &visgroup, "visgroup"))
+			KeyValues *nameKv = NULL;
+			KeyValues *visgroupIdKv = NULL;
+			s32 visgroupId = -1;
+			if (KeyValuesGetChild(visgroup, &nameKv, "name")
+				&& KeyValuesGetChild(visgroup, &visgroupIdKv, "visgroupid"))
 			{
-				KeyValues *nameKv = KeyValuesGetChild(visgroup, "name");
-				KeyValues *visgroupIdKv = KeyValuesGetChild(visgroup, "visgroupid");
-				s32 visgroupId = -1;
-				if (nameKv && visgroupIdKv)
+				if (StringToS32(visgroupIdKv->value, &visgroupId))
 				{
-					if (StringToS32(visgroupIdKv->value, &visgroupId))
+					if (StringEquals(nameKv->value, "Cellshade"))
 					{
-						if (StringEquals(nameKv->value, "Cellshade"))
-						{
-							cellshadeVisgroupId = visgroupId;
-						}
-						maxVisgroupId = MAX(maxVisgroupId, visgroupId);
+						cellshadeVisgroupId = visgroupId;
 					}
+					maxVisgroupId = MAX(maxVisgroupId, visgroupId);
 				}
 			}
 		}
@@ -460,8 +459,8 @@ int main(s32 argCount, char *arguments[])
 		{
 			if (StringEquals(entParams->key, "entity") || StringEquals(entParams->key, "world"))
 			{
-				KeyValues *idKv = KeyValuesGetChild(entParams, "id");
-				if (idKv)
+				KeyValues *idKv = NULL;
+				if (KeyValuesGetChild(entParams, &idKv, "id"))
 				{
 					s32 id = -1;
 					StringToS32(idKv->value, &id);
@@ -470,8 +469,8 @@ int main(s32 argCount, char *arguments[])
 					KeyValues *entChild = NULL;
 					while (KeyValuesGetNextChild(entParams, &entChild, "solid"))
 					{
-						idKv = KeyValuesGetChild(entChild, "id");
-						if (idKv)
+						idKv = NULL;
+						if (KeyValuesGetChild(entChild, &idKv, "id"))
 						{
 							id = -1;
 							StringToS32(idKv->value, &id);
@@ -480,8 +479,8 @@ int main(s32 argCount, char *arguments[])
 							KeyValues *sideParams = NULL;
 							while (KeyValuesGetNextChild(entChild, &sideParams, "side"))
 							{
-								idKv = KeyValuesGetChild(sideParams, "id");
-								if (idKv)
+								idKv = NULL;
+								if (KeyValuesGetChild(sideParams, &idKv, "id"))
 								{
 									id = -1;
 									StringToS32(idKv->value, &id);
@@ -502,12 +501,12 @@ int main(s32 argCount, char *arguments[])
 		KeyValuesResetIteration(&kv);
 		while (KeyValuesGetNextChild(&kv, &entity, "entity"))
 		{
-			KeyValues *editorSettings = KeyValuesGetChild(entity, "editor");
+			KeyValues *editorSettings = NULL;
 			s32 visgroupId = -1;
-			if (editorSettings)
+			if (KeyValuesGetChild(entity, &editorSettings, "editor"))
 			{
-				KeyValues *visgroupIdKv = KeyValuesGetChild(editorSettings, "visgroupid");
-				if (visgroupIdKv)
+				KeyValues *visgroupIdKv = NULL;
+				if (KeyValuesGetChild(editorSettings, &visgroupIdKv, "visgroupid"))
 				{
 					if (!StringToS32(visgroupIdKv->value, &visgroupId))
 					{
@@ -532,21 +531,21 @@ int main(s32 argCount, char *arguments[])
 				
 				Brush baseBrush = {};
 				// NOTE(GameChaos): we don't store these in the vmf, so we don't need to set the id.
-				for (s32 side = 0; side < arrlen(brush.sides); side++)
+				for (s32 side = 0; side < arrlen(brush.arrSides); side++)
 				{
-					BrushSide brushSide = brush.sides[side];
+					BrushSide brushSide = brush.arrSides[side];
 					// NOTE(GameChaos): inflate brush by x units
-					if (!StringEquals(brush.sides[side].material, "TOOLS/TOOLSNODRAW"))
+					if (!StringEquals(brush.arrSides[side].material, "TOOLS/TOOLSNODRAW"))
 					{
 						brushSide.distance += cmdArgs.outlinewidth.floatValue;
 					}
-					arrput(baseBrush.sides, brushSide);
+					arrput(baseBrush.arrSides, brushSide);
 				}
 				
 				v3 **polygons = GenerateBrushPolygons(&baseBrush);
 				for (s32 poly = 0; poly < arrlen(polygons); poly++)
 				{
-					if (StringEquals(baseBrush.sides[poly].material, "TOOLS/TOOLSNODRAW"))
+					if (StringEquals(baseBrush.arrSides[poly].material, "TOOLS/TOOLSNODRAW"))
 					{
 						continue;
 					}
@@ -554,7 +553,7 @@ int main(s32 argCount, char *arguments[])
 					Brush newBrush = {};
 					newBrush.id = ++biggestId;
 					
-					BrushSide firstSide = baseBrush.sides[poly];
+					BrushSide firstSide = baseBrush.arrSides[poly];
 					{
 						firstSide.id = ++biggestId;
 						
@@ -563,7 +562,7 @@ int main(s32 argCount, char *arguments[])
 						firstSide.plane[2] = polygons[poly][2];
 						
 						CopyString("TOOLS/TOOLSBLACK", firstSide.material, sizeof(firstSide.material));
-						arrput(newBrush.sides, firstSide);
+						arrput(newBrush.arrSides, firstSide);
 					}
 					
 					v3 avgPoint = {};
@@ -586,7 +585,7 @@ int main(s32 argCount, char *arguments[])
 						v3 vert1 = polygons[poly][vert];
 						v3 vert2 = polygons[poly][nextVert];
 						
-						BrushSide newSide = baseBrush.sides[poly];
+						BrushSide newSide = baseBrush.arrSides[poly];
 						newSide.id = ++biggestId;
 						
 						newSide.plane[0] = avgPoint;
@@ -594,7 +593,7 @@ int main(s32 argCount, char *arguments[])
 						newSide.plane[2] = vert1;
 						
 						CopyString("TOOLS/TOOLSINVISIBLE", newSide.material, sizeof(newSide.material));
-						arrput(newBrush.sides, newSide);
+						arrput(newBrush.arrSides, newSide);
 					}
 					arrput(brushes, newBrush);
 				}
@@ -656,13 +655,13 @@ int main(s32 argCount, char *arguments[])
 			{
 				Brush brush = {};
 				ParseVMFSolid(solid, &brush);
-				for (s32 side = 0; side < arrlen(brush.sides); side++)
+				for (s32 side = 0; side < arrlen(brush.arrSides); side++)
 				{
 					for (s32 i = 0; i < 3; i++)
 					{
 						char line[512];
 						Format(line, sizeof(line), "v %f %f %f\n",
-							   brush.sides[side].plane[i].x, brush.sides[side].plane[i].y, brush.sides[side].plane[i].z);
+							   brush.arrSides[side].plane[i].x, brush.arrSides[side].plane[i].y, brush.arrSides[side].plane[i].z);
 						vertCount++;
 						STRCONCATENATE(string, line);
 					}

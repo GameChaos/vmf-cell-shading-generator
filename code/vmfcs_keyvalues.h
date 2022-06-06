@@ -39,17 +39,19 @@ struct KeyValues
 	u32 childIterIndex; // index of the last child + 1 that was got with KeyValuesGetNextChild. 0 by default
 };
 
-internal char *KeyValuesToString(KeyValues *kv, String *string = NULL, s32 recursionDepth = 0);
+internal char *KeyValuesToString(KeyValues *kv);
 internal void PrintKeyValues(KeyValues *kv, s32 recursionDepth = 0);
 
-internal KeyValues *KeyValuesGetChild(KeyValues *kv, char *keyName);
-internal b32 KeyValuesGetNextChild(KeyValues *kv, KeyValues **out, char *keyName);
-internal void KeyValuesResetIteration(KeyValues *kv);
+internal b32 KeyValuesGetChild(KeyValues *kv, KeyValues **out, char *keyName); // find the first child with the provided key
+internal b32 KeyValuesGetNextChild(KeyValues *kv, KeyValues **out, char *keyName); // iterate over the children of kv.
+internal void KeyValuesResetIteration(KeyValues *kv); // reset the iteration counter to 0
 
+internal KeyValues CopyKeyValues(KeyValues kv);
 internal void KeyValuesAppend(KeyValues *kv, KeyValues newKeyValues);
 internal void KeyValuesAddChild(KeyValues *kv, char *key, char *value);
 
 internal void KeyValuesFree(KeyValues *kv);
+internal KeyValues KeyValuesFromString(KVTokeniser *tokeniser);
 internal b32 ImportKeyValues(KeyValues *kv, char *path);
 
 #endif //HAMER_KEYVALUES_H

@@ -37,30 +37,7 @@ struct BrushSide
 struct Brush
 {
 	u32 id;
-	BrushSide *sides; // stb_ds dynamic array
-	KeyValues unknownKV;
-};
-
-struct Entity
-{
-	u32 id;
-	
-	// TODO: max classname length
-	char classname[128];
-	v3 origin; // NAN if not applicable?
-	
-	// TODO: fgd stuff
-	Brush *brushes;
-	
-	KeyValues properties;
-};
-
-struct MapData
-{
-	// stb_ds dynamic arrays
-	// Entity worldEntity;
-	Entity *entities;
-	
+	BrushSide *arrSides; // stb_ds dynamic array
 	KeyValues unknownKV;
 };
 
