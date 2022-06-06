@@ -279,6 +279,16 @@ internal b32 ParseCmdArgs(CmdArgs *cmdArgs, s32 argCount, char *arguments[])
 									break;
 								}
 							}
+							else if (cmdArgs->args[j].type == CMDARG_INTEGER)
+							{
+								if (!StringToS32(arguments[i + 1], &cmdArgs->args[j].intValue))
+								{
+									printf("ERROR: Couldn't convert command \"%s\"'s argument \"%s\" to an integer!\n\n",
+										   arguments[i], arguments[i + 1]);
+									result = false;
+									break;
+								}
+							}
 							else
 							{
 								printf("ERROR: Dumbass programmer configured the command line options incorrectly. Shame on them!\n\n");
@@ -368,11 +378,21 @@ int main(s32 argCount, char *arguments[])
 	cmdArgs.debugExportObj = {"-debugexportobj", "Export an obj file of brush faces for debugging.", CMDARG_STRING};
 	cmdArgs.input = {"-input", "Input vmf file to be used for generating cell shading.", CMDARG_STRING};
 	cmdArgs.output = {"-output", "Output instance vmf file of cell shading brushes.", CMDARG_STRING};
+	
 	cmdArgs.outlineWidth = {"-outlinewidth", "Cell shading outline width in hammer units. It's 2.0 by default.", CMDARG_FLOAT};
 	cmdArgs.outlineWidth.floatValue = 2;
+	
 	cmdArgs.outlineMaterial = {"-outlinematerial", "Cell shading outline material. It's \"TOOLS/TOOLSBLACK\" by default. Make sure to use UnlitGeneric materials or materials that don't generate lighting, because lightmapped materials would increase compile times a lot!", CMDARG_STRING};
 	CopyString("TOOLS/TOOLSBLACK", cmdArgs.outlineMaterial.stringValue, sizeof(cmdArgs.outlineMaterial.stringValue));
 	
+	cmdArgs.invisibleBrushGenerationMode = {
+		"-invisiblebrushgenerationmode",
+		"ADVANCED! How an outline brush is generated. Defaults to 0.\n\
+\t0 = Normal extrusion axially aligned faces, cone-like generation on diagonal faces.\n\
+\t1 = Only cone-like generation. Uses 1 fewer plane, but might use up brushcount more.\n\
+\t2 = Only normal extrusion. If the face is a square then it generates a cube-like shape. This should be more friendly to vbsp moving vertices around, than the cone-like generation.",
+		CMDARG_INTEGER
+	};
 	
 	printf("Running VMF Cell Shading V%s\n\n", VMFCS_VERSION);
 	
@@ -403,11 +423,22 @@ int main(s32 argCount, char *arguments[])
 		goto error;
 	}
 	
+	// TODO: this should really be an error in parsing. make min and max values for args!
+	if (cmdArgs.invisibleBrushGenerationMode.intValue < BRUSHGENMODE_COMBINED
+		|| cmdArgs.invisibleBrushGenerationMode.intValue >= BRUSHGENMODE_COUNT)
+	{
+		printf("ERROR: Invalid input \"%i\" for \"%s\". This should be in the range of %i to %i (inclusive)!\n\n",
+			   cmdArgs.invisibleBrushGenerationMode.intValue,
+			   cmdArgs.invisibleBrushGenerationMode.argName,
+			   BRUSHGENMODE_COMBINED, BRUSHGENMODE_COUNT - 1);
+		PrintCmdLineHelp(&cmdArgs);
+		goto error;
+	}
+	
 	if (cmdArgs.help.isInCmdLine)
 	{
 		PrintCmdLineHelp(&cmdArgs);
 	}
-	
 	
 	KeyValues kv = {};
 	if (!ImportKeyValues(&kv, cmdArgs.input.stringValue))
@@ -567,35 +598,86 @@ int main(s32 argCount, char *arguments[])
 						arrput(newBrush.arrSides, firstSide);
 					}
 					
-					v3 avgPoint = {};
-					for (s32 vert = 0; vert < arrlen(polygons[poly]); vert++)
-					{
-						avgPoint += polygons[poly][vert];
-					}
-					avgPoint *= 1.0f / (f32)arrlen(polygons[poly]);
-					avgPoint += firstSide.normal * 10;
+					v3 faceExtrusion = firstSide.normal * INVISIBLE_FACE_EXTRUSION;
 					
-					// construct the other sides
-					for (s32 vert = 0; vert < arrlen(polygons[poly]); vert++)
+					b32 useConicalGen = cmdArgs.invisibleBrushGenerationMode.intValue == BRUSHGENMODE_CONICAL;
+					if (cmdArgs.invisibleBrushGenerationMode.intValue == BRUSHGENMODE_COMBINED)
 					{
-						s32 nextVert = vert + 1;
-						if (nextVert >= arrlen(polygons[poly]))
+						// NOTE(GameChaos): very simple check for if face is axially aligned
+						useConicalGen = !(Abs(firstSide.normal.x) >= 0.999f
+										  || Abs(firstSide.normal.y) >= 0.999f
+										  || Abs(firstSide.normal.z) >= 0.999f);
+					}
+					
+					if (useConicalGen)
+					{
+						// NOTE(GameChaos): method 1 of generating invisible faces: generate them like a cone.
+						v3 avgPoint = {};
+						for (s32 vert = 0; vert < arrlen(polygons[poly]); vert++)
 						{
-							nextVert -= (s32)arrlen(polygons[poly]);
+							avgPoint += polygons[poly][vert];
 						}
+						avgPoint *= 1.0f / (f32)arrlen(polygons[poly]);
+						avgPoint += faceExtrusion;
 						
-						v3 vert1 = polygons[poly][vert];
-						v3 vert2 = polygons[poly][nextVert];
+						// construct the other sides
+						for (s32 vert = 0; vert < arrlen(polygons[poly]); vert++)
+						{
+							s32 nextVert = vert + 1;
+							if (nextVert >= arrlen(polygons[poly]))
+							{
+								nextVert -= (s32)arrlen(polygons[poly]);
+							}
+							
+							v3 vert1 = polygons[poly][vert];
+							v3 vert2 = polygons[poly][nextVert];
+							
+							BrushSide newSide = baseBrush.arrSides[poly];
+							newSide.id = ++biggestId;
+							
+							newSide.plane[0] = avgPoint;
+							newSide.plane[1] = vert2;
+							newSide.plane[2] = vert1;
+							
+							CopyString(INVISIBLE_MATERIAL, newSide.material, sizeof(newSide.material));
+							arrput(newBrush.arrSides, newSide);
+						}
+					}
+					else
+					{
+						// NOTE(GameChaos): method 2 of generating invisible faces: generate them like an extrusion
+						BrushSide secondSide = firstSide;
 						
-						BrushSide newSide = baseBrush.arrSides[poly];
-						newSide.id = ++biggestId;
+						// NOTE(GameChaos): flip the normal. this is the face that's parallel to the first face.
+						secondSide.plane[0] = firstSide.plane[0] + faceExtrusion;
+						secondSide.plane[1] = firstSide.plane[2] + faceExtrusion;
+						secondSide.plane[2] = firstSide.plane[1] + faceExtrusion;
 						
-						newSide.plane[0] = avgPoint;
-						newSide.plane[1] = vert2;
-						newSide.plane[2] = vert1;
+						CopyString(INVISIBLE_MATERIAL, secondSide.material, sizeof(secondSide.material));
+						arrput(newBrush.arrSides, secondSide);
 						
-						CopyString("TOOLS/TOOLSINVISIBLE", newSide.material, sizeof(newSide.material));
-						arrput(newBrush.arrSides, newSide);
+						for (s32 vert = 0; vert < arrlen(polygons[poly]); vert++)
+						{
+							s32 nextVert = vert + 1;
+							if (nextVert >= arrlen(polygons[poly]))
+							{
+								nextVert -= (s32)arrlen(polygons[poly]);
+							}
+							
+							v3 vert1 = polygons[poly][vert];
+							v3 vert2 = polygons[poly][nextVert] + faceExtrusion;
+							v3 vert3 = polygons[poly][nextVert];
+							
+							BrushSide newSide = baseBrush.arrSides[poly];
+							newSide.id = ++biggestId;
+							
+							newSide.plane[0] = vert1;
+							newSide.plane[1] = vert2;
+							newSide.plane[2] = vert3;
+							
+							CopyString(INVISIBLE_MATERIAL, newSide.material, sizeof(newSide.material));
+							arrput(newBrush.arrSides, newSide);
+						}
 					}
 					arrput(brushes, newBrush);
 				}
@@ -665,8 +747,8 @@ int main(s32 argCount, char *arguments[])
 		KeyValues *entity = NULL;
 		String *string = NULL;
 		s64 vertCount = 0;
-		KeyValuesResetIteration(&kv);
-		while (KeyValuesGetNextChild(&kv, &entity, "entity"))
+		KeyValuesResetIteration(&newEntitiesKv);
+		while (KeyValuesGetNextChild(&newEntitiesKv, &entity, "entity"))
 		{
 			KeyValues *solid = NULL;
 			while (KeyValuesGetNextChild(entity, &solid, "solid"))
@@ -696,7 +778,7 @@ int main(s32 argCount, char *arguments[])
 		}
 	}
 	
-	char *editedOriginalVmf = KeyValuesToString(&kv);
+	//char *editedOriginalVmf = KeyValuesToString(&kv);
 	
 	String *newVMF = NULL;
 	STRCONCATENATE(newVMF, emptyVmf);

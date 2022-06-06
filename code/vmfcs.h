@@ -10,6 +10,9 @@
 
 #define MAP_MAX_SIZE 16384.0f
 
+#define INVISIBLE_FACE_EXTRUSION 8.0f
+#define INVISIBLE_MATERIAL "TOOLS/TOOLSINVISIBLE"
+
 #define VMFCS_VERSION "0.0.1"
 
 struct ReadFileResult
@@ -23,8 +26,18 @@ enum CmdArgType
 	CMDARG_NONE,
 	CMDARG_STRING,
 	CMDARG_FLOAT,
+	CMDARG_INTEGER,
 	
 	CMDARGTYPE_COUNT,
+};
+
+enum
+{
+	BRUSHGENMODE_COMBINED,
+	BRUSHGENMODE_CONICAL,
+	BRUSHGENMODE_EXTRUSION,
+	
+	BRUSHGENMODE_COUNT,
 };
 
 struct CmdArg
@@ -37,6 +50,7 @@ struct CmdArg
 	{
 		char stringValue[512];
 		f32 floatValue;
+		s32 intValue;
 	};
 	
 	b32 isInCmdLine; // whether this exists on the command line
@@ -53,8 +67,9 @@ union CmdArgs
 		CmdArg output;
 		CmdArg outlineWidth;
 		CmdArg outlineMaterial;
+		CmdArg invisibleBrushGenerationMode;
 	};
-	CmdArg args[7];
+	CmdArg args[8];
 };
 
 static_assert(MEMBER_SIZE(CmdArgs, args) == sizeof(CmdArgs), "CmdArgs size and args array length are mismatched!");
@@ -74,6 +89,7 @@ global char *g_cmdArgTypeStrings[CMDARGTYPE_COUNT] = {
 	"None",
 	"String",
 	"Number",
+	"Integer",
 };
 
 local_persist char *emptyVmf = R"(
