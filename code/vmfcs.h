@@ -30,7 +30,7 @@ enum CmdArgType
 struct CmdArg
 {
 	char argName[64];
-	char description[128];
+	char description[1024];
 	
 	CmdArgType type;
 	union
@@ -51,12 +51,13 @@ union CmdArgs
 		CmdArg debugExportObj;
 		CmdArg input;
 		CmdArg output;
-		CmdArg outlinewidth;
+		CmdArg outlineWidth;
+		CmdArg outlineMaterial;
 	};
-	CmdArg args[6];
+	CmdArg args[7];
 };
 
-static_assert(ARRAY_LENGTH(MEMBER(CmdArgs, args)) * sizeof(CmdArg) == sizeof(CmdArgs), "CmdArgs union args are mismatched!");
+static_assert(MEMBER_SIZE(CmdArgs, args) == sizeof(CmdArgs), "CmdArgs size and args array length are mismatched!");
 
 internal void DuplicateMemory(void *source, void *destination, size_t bytes, size_t destSize);
 internal void CopyString(char *source, char *dest, size_t destSize);

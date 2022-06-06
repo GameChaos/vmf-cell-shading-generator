@@ -66,6 +66,7 @@ typedef double f64;
 #define ROUND_DOWN_BY_POWER_OF_2(value, powerOf2) ((value) & ~((powerOf2) - 1))
 
 #define MEMBER(type, member) (((type *)0)->member)
+#define MEMBER_SIZE(type, member) (sizeof(((type *)0)->member))
 #define OFFSETOF(type, member) ((u64)&MEMBER(type, member))
 
 #endif //GC_COMMON_H

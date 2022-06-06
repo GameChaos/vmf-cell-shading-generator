@@ -368,8 +368,10 @@ int main(s32 argCount, char *arguments[])
 	cmdArgs.debugExportObj = {"-debugexportobj", "Export an obj file of brush faces for debugging.", CMDARG_STRING};
 	cmdArgs.input = {"-input", "Input vmf file to be used for generating cell shading.", CMDARG_STRING};
 	cmdArgs.output = {"-output", "Output instance vmf file of cell shading brushes.", CMDARG_STRING};
-	cmdArgs.outlinewidth = {"-outlinewidth", "Cell shading outline width in hammer units. It's 2.0 by default.", CMDARG_FLOAT};
-	cmdArgs.outlinewidth.floatValue = 2;
+	cmdArgs.outlineWidth = {"-outlinewidth", "Cell shading outline width in hammer units. It's 2.0 by default.", CMDARG_FLOAT};
+	cmdArgs.outlineWidth.floatValue = 2;
+	cmdArgs.outlineMaterial = {"-outlinematerial", "Cell shading outline material. It's \"TOOLS/TOOLSBLACK\" by default. Make sure to use UnlitGeneric materials or materials that don't generate lighting, because lightmapped materials would increase compile times a lot!", CMDARG_STRING};
+	CopyString("TOOLS/TOOLSBLACK", cmdArgs.outlineMaterial.stringValue, sizeof(cmdArgs.outlineMaterial.stringValue));
 	
 	
 	printf("Running VMF Cell Shading V%s\n\n", VMFCS_VERSION);
@@ -414,7 +416,7 @@ int main(s32 argCount, char *arguments[])
 		goto error;
 	}
 	
-	printf("Generating cell shading for \"%s\" with outline width %.1f.\n\n", cmdArgs.input.stringValue, cmdArgs.outlinewidth.floatValue);
+	printf("Generating cell shading for \"%s\" with outline width %.1f.\n\n", cmdArgs.input.stringValue, cmdArgs.outlineWidth.floatValue);
 	
 	s32 cellshadeVisgroupId = -1;
 	s32 maxVisgroupId = -1;
@@ -537,7 +539,7 @@ int main(s32 argCount, char *arguments[])
 					// NOTE(GameChaos): inflate brush by x units
 					if (!StringEquals(brush.arrSides[side].material, "TOOLS/TOOLSNODRAW"))
 					{
-						brushSide.distance += cmdArgs.outlinewidth.floatValue;
+						brushSide.distance += cmdArgs.outlineWidth.floatValue;
 					}
 					arrput(baseBrush.arrSides, brushSide);
 				}
@@ -561,7 +563,7 @@ int main(s32 argCount, char *arguments[])
 						firstSide.plane[1] = polygons[poly][1];
 						firstSide.plane[2] = polygons[poly][2];
 						
-						CopyString("TOOLS/TOOLSBLACK", firstSide.material, sizeof(firstSide.material));
+						CopyString(cmdArgs.outlineMaterial.stringValue, firstSide.material, sizeof(firstSide.material));
 						arrput(newBrush.arrSides, firstSide);
 					}
 					
