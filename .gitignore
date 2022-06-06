@@ -1,5 +1,6 @@
 build/
 .vscode/
+instances/
 out.vmf
 *.vmx
 *.obj
