@@ -619,8 +619,24 @@ int main(s32 argCount, char *arguments[])
 		KeyValuesAddChild(&entity, "fademindist", "-1");
 		KeyValuesAddChild(&entity, "fadescale", "1");
 		
-		// TODO:
-		KeyValuesAddChild(&entity, "origin", "0 0 0");
+		// NOTE(GameChaos): find the rough origin of the brush.
+		v3 entOrigin = {};
+		for (s32 brush = 0; brush < arrlen(arrNewBrushes[i]); brush++)
+		{
+			v3 brushOrigin = {};
+			for (s32 sideIndex = 0; sideIndex < arrlen(arrNewBrushes[i][brush].arrSides); sideIndex++)
+			{
+				BrushSide *side = &arrNewBrushes[i][brush].arrSides[sideIndex];
+				brushOrigin += side->plane[0] + side->plane[1] + side->plane[2];
+			}
+			brushOrigin *= 1.0f / (arrlen(arrNewBrushes[i][brush].arrSides) * 3.0f);
+			entOrigin += brushOrigin;
+		}
+		entOrigin *= 1.0f / arrlen(arrNewBrushes[i]);
+		
+		char origin[128];
+		Format(origin, sizeof(origin), "%f %f %f", entOrigin.x, entOrigin.y, entOrigin.z);
+		KeyValuesAddChild(&entity, "origin", origin);
 		
 		KeyValuesAddChild(&entity, "renderamt", "255");
 		KeyValuesAddChild(&entity, "rendercolor", "255 255 255");
