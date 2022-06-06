@@ -3,3 +3,6 @@ build/
 out.vmf
 *.vmx
 *.obj
+*.bsp
+*.prt
+*.log
